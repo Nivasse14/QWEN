@@ -82,6 +82,28 @@ réinjecter les secrets externes au nouveau Pod. L'identité Tailscale est elle
 aussi conservée hors du FUSE, dans `/var/lib/ai-phone-stack/tailscale`, puis
 recréée avec la clé injectée après redéploiement.
 
+## Accès GitHub en écriture par clé de déploiement
+
+Le dépôt `Nivasse14/QWEN` utilise une clé SSH de déploiement dédiée avec accès
+en écriture. Sa clé privée reste sur le poste de confiance et, pendant
+l'exécution, dans `/root/.ssh/ai-phone-qwen-deploy`. Elle ne doit jamais être
+copiée dans `/workspace` ni ajoutée à Git.
+
+Après un terminate/redeploy, recopier la clé depuis le poste de confiance vers
+`/root/.ssh/ai-phone-qwen-deploy`, imposer le mode `0600`, puis configurer le
+dépôt :
+
+```bash
+cd /workspace/ai-phone-stack
+sudo ./scripts/setup-github-deploy-key.sh \
+  /workspace/repos/Nivasse14/QWEN
+```
+
+Le script vérifie la clé, installe la clé d'hôte ED25519 officielle de GitHub
+avec vérification stricte, et configure `origin` en SSH. La clé publique peut
+rester enregistrée dans **Settings → Deploy keys** tant que ce Pod doit pousser
+vers ce dépôt.
+
 ## Installation sûre de `/workspace/start-all`
 
 Le lanceur RunPod maintient le conteneur actif, surveille la santé sans tenter
