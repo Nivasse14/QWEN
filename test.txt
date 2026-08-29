@@ -1,1 +1,2 @@
 Qwen AI Phone Stack — test GitHub réussi.
+Push authentifié via l’outil OpenAPI.
