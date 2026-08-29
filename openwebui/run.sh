@@ -7,6 +7,13 @@ source "${SCRIPT_DIR}/common.sh"
 
 OPENWEBUI_BIN="${OPENWEBUI_VENV_DIR}/bin/open-webui"
 [[ -x "$OPENWEBUI_BIN" ]] || die "open-webui introuvable: $OPENWEBUI_BIN"
+OPENWEBUI_REQUIRED_VERSION=0.11.1
+OPENWEBUI_INSTALLED_VERSION="$(
+  "${OPENWEBUI_VENV_DIR}/bin/python" -c \
+    'import importlib.metadata; print(importlib.metadata.version("open-webui"))'
+)" || die "version Open WebUI illisible"
+[[ "$OPENWEBUI_INSTALLED_VERSION" == "$OPENWEBUI_REQUIRED_VERSION" ]] \
+  || die "Open WebUI ${OPENWEBUI_INSTALLED_VERSION} non validé; version attendue: ${OPENWEBUI_REQUIRED_VERSION}"
 
 export WEBUI_SECRET_KEY TOOLS_API_TOKEN FLUX_ORCHESTRATOR_TOKEN
 WEBUI_SECRET_KEY="$(read_private_secret "${SECRET_DIR}/webui_secret_key")"
@@ -62,12 +69,37 @@ export DEFAULT_PINNED_MODELS=qwen3.8-uncensored-agent
 export TASK_MODEL_EXTERNAL=qwen3.8-uncensored
 export ENABLE_OPENAI_API_PASSTHROUGH=false
 
+LLAMA_CONTEXT_SIZE_EFFECTIVE="$(bash "${STACK_ROOT}/llm/context-size.sh")" \
+  || die "impossible de résoudre le contexte llama.cpp"
+[[ "$LLAMA_CONTEXT_SIZE_EFFECTIVE" =~ ^[0-9]+$ ]] \
+  || die "contexte llama.cpp non numérique: ${LLAMA_CONTEXT_SIZE_EFFECTIVE}"
+CONTEXT_COMPACTION_RESERVE=$((LLAMA_CONTEXT_SIZE_EFFECTIVE / 4))
+if (( CONTEXT_COMPACTION_RESERVE < 12288 )); then
+  CONTEXT_COMPACTION_RESERVE=12288
+fi
+CONTEXT_COMPACTION_THRESHOLD=$((LLAMA_CONTEXT_SIZE_EFFECTIVE - CONTEXT_COMPACTION_RESERVE))
+export ENABLE_CONTEXT_COMPACTION=true
+export CONTEXT_COMPACTION_MODEL=qwen3.8-uncensored
+export CONTEXT_COMPACTION_TOKEN_THRESHOLD="$CONTEXT_COMPACTION_THRESHOLD"
+export CONTEXT_COMPACTION_TOKEN_CAP="$CONTEXT_COMPACTION_THRESHOLD"
+export CONTEXT_COMPACTION_RETENTION_PERCENTAGE=40
+log "compaction de contexte active à ${CONTEXT_COMPACTION_THRESHOLD}/${LLAMA_CONTEXT_SIZE_EFFECTIVE} tokens"
+
 export ENABLE_WEB_SEARCH=true
 export WEB_SEARCH_ENGINE=searxng
 export 'SEARXNG_QUERY_URL=http://127.0.0.1:8889/search?q=<query>'
 export SEARXNG_LANGUAGE=fr-FR
 export WEB_SEARCH_RESULT_COUNT=5
-export WEB_FETCH_MAX_CONTENT_LENGTH=30000
+export WEB_FETCH_MAX_CONTENT_LENGTH=6000
+
+# Les documents volumineux passent par des fragments RAG bornés. Ne jamais
+# injecter automatiquement l'intégralité d'un upload dans la fenêtre du LLM.
+export RAG_FULL_CONTEXT=false
+export BYPASS_EMBEDDING_AND_RETRIEVAL=false
+export RAG_TOP_K=3
+export RAG_TOP_K_RERANKER=3
+export CHUNK_SIZE=1000
+export CHUNK_OVERLAP=100
 
 export ENABLE_CODE_INTERPRETER=true
 export CODE_INTERPRETER_ENGINE=pyodide

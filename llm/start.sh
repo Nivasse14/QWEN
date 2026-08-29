@@ -44,19 +44,29 @@ install -d -m 0750 "$AI_STACK_RUNTIME_DIR"
 touch "$LLAMA_LOG_FILE"
 chmod 0640 "$LLAMA_LOG_FILE" 2>/dev/null || true
 
+resolved_context_size="$(resolve_llama_context_size)"
+gpu_memory_mib="$(detect_total_gpu_memory_mib 2>/dev/null || true)"
+if [[ "$resolved_context_size" == "65536" \
+  && "$gpu_memory_mib" =~ ^[0-9]+$ \
+  && "$gpu_memory_mib" -lt "$LLAMA_64K_MIN_GPU_MEMORY_MIB" ]]; then
+  log "AVERTISSEMENT: contexte 64K forcé avec seulement ${gpu_memory_mib} MiB de VRAM; risque d'OOM"
+fi
+
 server_args=(
   --model "$LLAMA_MODEL_FILE"
   --host "$LLAMA_BIND_ADDRESS"
   --port "$LLAMA_PORT"
   --alias "$LLAMA_ALIAS"
-  --ctx-size "$LLAMA_CONTEXT_SIZE"
+  --ctx-size "$resolved_context_size"
   --n-gpu-layers "$LLAMA_GPU_LAYERS"
   --flash-attn on
   --cache-type-k q8_0
   --cache-type-v q8_0
   --jinja
-  --chat-template-kwargs '{"enable_thinking":false}'
+  --chat-template-kwargs '{"enable_thinking":false,"preserve_thinking":false}'
+  --reasoning off
   --reasoning-budget 0
+  --no-context-shift
   --parallel "$LLAMA_PARALLEL"
   --metrics
 )
@@ -74,7 +84,7 @@ else
   log "clé API absente: service local uniquement, sans authentification"
 fi
 
-log "démarrage natif de llama.cpp sur ${LLAMA_BIND_ADDRESS}:${LLAMA_PORT}, contexte ${LLAMA_CONTEXT_SIZE}, raisonnement désactivé"
+log "démarrage natif de llama.cpp sur ${LLAMA_BIND_ADDRESS}:${LLAMA_PORT}, contexte ${resolved_context_size}, raisonnement désactivé"
 nohup "$LLAMA_SERVER_BIN" "${server_args[@]}" >>"$LLAMA_LOG_FILE" 2>&1 </dev/null &
 service_pid=$!
 pid_tmp="${LLAMA_PID_FILE}.$$"

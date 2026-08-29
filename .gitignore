@@ -2,9 +2,9 @@
 .env.*
 !.env.example
 .local-state/
+.env.local
 .runtime/
 run/
 state/
 vendor/
 *.log
-

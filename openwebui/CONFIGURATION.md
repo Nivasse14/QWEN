@@ -15,6 +15,36 @@ donc fonctionner jusqu'au prochain restart puis disparaître.
 - Open WebUI : écoute uniquement sur `127.0.0.1:3000`, puis Tailscale le
   publie dans le tailnet.
 
+## Fenêtre de contexte et conversations longues
+
+`llm/context-size.sh` fournit une valeur unique à llama-server et Open WebUI :
+
+- 49 152 tokens sur une carte 24 Go (RTX 3090/4090) avec le cache KV Q8 ;
+- 65 536 tokens à partir de 30 000 MiB de VRAM (par exemple RTX 5090 32 Go) ;
+- surcharge explicite possible avec `LLAMA_CONTEXT_SIZE=32k` ou `64k` dans
+  `llm/.env`.
+
+Le lancement refuse toute version Open WebUI autre que `0.11.1`, version
+installée et auditée pour ces variables de compaction. Toute mise à jour doit
+d'abord revalider ce contrat et ajuster ce garde-fou.
+
+Open WebUI 0.11.1 compacte nativement l'historique en réservant au moins
+12 288 tokens et, au-delà, 25 % de la fenêtre : seuil de 20 480 en 32K,
+36 864 en 48K et 49 152 en 64K. Cette marge couvre le prompt système, les
+schémas d'outils et la réponse. La compaction conserve
+40 % des messages récents et ajoute un résumé de l'historique retiré.
+
+Les uploads restent en RAG borné (`RAG_FULL_CONTEXT=false`, trois fragments de
+1 000 caractères avec 100 de recouvrement). Forcer le contexte complet d'un
+gros fichier dans l'UI peut encore dépasser ces garde-fous.
+
+La lecture Web est limitée à 6 000 caractères par résultat et cinq résultats,
+afin qu'un seul tour de recherche ne consomme pas toute la marge réservée.
+
+La compaction protège les conversations longues, pas un message unique plus
+grand que la fenêtre. Un collage de plus de 48K/64K doit être découpé ou envoyé
+comme fichier RAG.
+
 Les clés Open WebUI, Tools API, FLUX et éventuellement llama-server sont lues
 depuis `/run/secrets/ai-phone-stack`. `ENABLE_OPENAI_API_PASSTHROUGH=false`
 reste obligatoire : le passthrough contournerait les contrôles de modèles en

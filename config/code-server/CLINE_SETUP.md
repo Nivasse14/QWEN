@@ -34,8 +34,9 @@ unique et explicite.
 2. Dans les réglages Cline, choisir **OpenAI Compatible**.
 3. Renseigner l'URL `http://127.0.0.1:8000/v1`.
 4. Renseigner le modèle `qwen3.8-uncensored`.
-5. Régler la fenêtre de contexte sur `16384` et la sortie maximale sur `4096`
-   pour commencer. Ne pas activer « Supports Images » tant que llama-server
+5. Régler la fenêtre sur `49152` pour une RTX 3090/4090 24 Go, ou `65536`
+   pour une carte 32 Go lorsque `llm/context-size.sh` affiche cette valeur.
+   Conserver la sortie maximale à `4096`. Ne pas activer « Supports Images » tant que llama-server
    n'est pas lancé avec le projecteur multimodal `--mmproj`.
 6. Si llama-server est local sans authentification, saisir comme clé la valeur
    non secrète `local-loopback-only`. Si `LLAMA_REQUIRE_API_KEY=1`, saisir la
@@ -76,4 +77,3 @@ gh auth status
 Puis demander à Cline, dans un dépôt de test, de lire un fichier, faire une
 petite modification, lancer un test et montrer le diff. Le premier push doit
 rester manuel et viser une branche dédiée.
-

@@ -139,6 +139,7 @@ Community Cloud. Les scripts locaux suivent donc un cycle prudent :
 
 ```bash
 ./local/start-pod.sh --preview-redeploy
+./local/start-pod.sh --preview-redeploy --use-fallback-gpu
 ./local/stop-pod.sh --terminate-redeploy --dry-run
 ./local/stop-pod.sh --terminate-redeploy \
   --confirm-pod-id ew6jja07rnn0cg
@@ -161,6 +162,18 @@ n'enregistrent aucune clé dans ce dépôt. L'arrêt interne `stop-stack.sh`
 coupe les services mais pas la facturation GPU. Avec le volume réseau
 `n10j3zet9z`, l'extinction facturable du Pod `ew6jja07rnn0cg` est une suppression
 explicitement confirmée, puis un redéploiement ultérieur sur le même volume.
+
+Le redéploiement utilise le template officiel `runpod-torch-v280`. Le CLI ne
+permettant qu'un GPU par create, la RTX 3090 est un fallback manuel et sûr : si
+la tentative RTX 4090 échoue, contrôler `runpodctl pod list --all` avant
+`./local/start-pod.sh --use-fallback-gpu`. Aucun retry automatique ne risque
+ainsi de créer deux Pods facturés.
+
+Laisser `RUNPOD_DOCKER_ARGS` vide au premier boot conserve Jupyter/SSH. Les
+secrets privés et l'identité Tailscale disparaissent avec le Pod ; lancer
+immédiatement `/workspace/start-all` comme Docker CMD échouerait avant leur
+réinjection. La disponibilité 4090/3090 en `EU-RO-1` et les 64 Go de RAM restent
+des contrôles à effectuer au moment du redéploiement.
 
 Le terminate/redeploy conserve le dépôt, les modèles, les données Open WebUI et
 les journaux situés sur le volume. Il perd le disque conteneur, `/run`, les

@@ -16,7 +16,10 @@ LLAMA_SERVER_BIN="${LLAMA_SERVER_BIN:-${LLAMA_CPP_SOURCE}/build/bin/llama-server
 LLAMA_BIND_ADDRESS="${LLAMA_BIND_ADDRESS:-127.0.0.1}"
 LLAMA_PORT="${LLAMA_PORT:-8000}"
 LLAMA_ALIAS="${LLAMA_ALIAS:-qwen3.8-uncensored}"
-LLAMA_CONTEXT_SIZE="${LLAMA_CONTEXT_SIZE:-16384}"
+LLAMA_CONTEXT_SIZE="${LLAMA_CONTEXT_SIZE:-auto}"
+LLAMA_CONTEXT_SIZE_24GB="${LLAMA_CONTEXT_SIZE_24GB:-49152}"
+LLAMA_CONTEXT_SIZE_32GB="${LLAMA_CONTEXT_SIZE_32GB:-65536}"
+LLAMA_64K_MIN_GPU_MEMORY_MIB="${LLAMA_64K_MIN_GPU_MEMORY_MIB:-30000}"
 LLAMA_GPU_LAYERS="${LLAMA_GPU_LAYERS:-999}"
 LLAMA_PARALLEL="${LLAMA_PARALLEL:-1}"
 LLAMA_START_TIMEOUT="${LLAMA_START_TIMEOUT:-300}"
@@ -43,6 +46,48 @@ log() {
 die() {
   log "ERREUR: $*"
   exit 1
+}
+
+detect_total_gpu_memory_mib() {
+  command -v nvidia-smi >/dev/null 2>&1 || return 1
+  nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null \
+    | awk 'NR == 1 { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0); if ($0 ~ /^[0-9]+$/) print $0; exit }' \
+    | grep -E '^[0-9]+$'
+}
+
+validate_context_size() {
+  local value="$1"
+  [[ "$value" =~ ^[0-9]+$ ]] \
+    || die "contexte llama.cpp invalide: ${value} (attendu: auto, 32k, 64k ou entier)"
+  (( value >= 16384 && value <= 65536 )) \
+    || die "contexte llama.cpp hors limites sûres [16384, 65536]: ${value}"
+}
+
+resolve_llama_context_size() {
+  local requested="${LLAMA_CONTEXT_SIZE:-auto}"
+  local resolved gpu_memory_mib
+
+  case "$requested" in
+    auto)
+      validate_context_size "$LLAMA_CONTEXT_SIZE_24GB"
+      validate_context_size "$LLAMA_CONTEXT_SIZE_32GB"
+      [[ "$LLAMA_64K_MIN_GPU_MEMORY_MIB" =~ ^[0-9]+$ ]] \
+        || die "LLAMA_64K_MIN_GPU_MEMORY_MIB invalide: ${LLAMA_64K_MIN_GPU_MEMORY_MIB}"
+      gpu_memory_mib="$(detect_total_gpu_memory_mib 2>/dev/null || true)"
+      if [[ "$gpu_memory_mib" =~ ^[0-9]+$ ]] \
+        && (( gpu_memory_mib >= LLAMA_64K_MIN_GPU_MEMORY_MIB )); then
+        resolved="$LLAMA_CONTEXT_SIZE_32GB"
+      else
+        resolved="$LLAMA_CONTEXT_SIZE_24GB"
+      fi
+      ;;
+    32k|32K) resolved=32768 ;;
+    64k|64K) resolved=65536 ;;
+    *) resolved="$requested" ;;
+  esac
+
+  validate_context_size "$resolved"
+  printf '%s\n' "$resolved"
 }
 
 require_command() {

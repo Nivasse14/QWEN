@@ -28,6 +28,8 @@ cp local/env.example .env.local
 ./local/store-runpod-key.sh
 
 ./local/start-pod.sh --preview-redeploy
+# Vérifie aussi la commande de fallback, sans appel API :
+./local/start-pod.sh --preview-redeploy --use-fallback-gpu
 
 # L'arrêt simple est volontairement refusé :
 ./local/stop-pod.sh
@@ -42,6 +44,46 @@ cp local/env.example .env.local
 # Plus tard, redéploie un nouveau Pod sur le même volume :
 ./local/start-pod.sh
 ```
+
+Le client `runpodctl pod create` accepte un seul `--gpu-id`. Le fallback est
+donc volontairement **explicite**, jamais automatique : la première tentative
+utilise la RTX 4090. Si elle échoue sans retourner d'ID, vérifier d'abord qu'elle
+n'a créé aucun Pod, puis seulement essayer la RTX 3090 :
+
+```bash
+runpodctl pod list --all
+./local/start-pod.sh --use-fallback-gpu
+```
+
+Si RunPod retourne un ID malgré une erreur, le script le mémorise et refuse tout
+retry aveugle. Cette précaution évite deux Pods facturés en parallèle.
+
+Le template officiel `runpod-torch-v280` correspond à l'image actuelle. Le
+`templateId` nul du Pod existant signifie seulement que celui-ci a été créé à
+partir de l'image plutôt que de ce template. Le redéploiement peut utiliser le
+template officiel.
+
+`RUNPOD_DOCKER_ARGS` reste vide au premier redéploiement. Le CMD par défaut du
+template conserve Jupyter/SSH pour réinjecter les secrets privés. Pointer dès
+le premier boot vers `/workspace/start-all` ferait échouer la pile : le disque
+conteneur privé, `/root/.config/ai-phone-stack/secrets` et l'identité Tailscale
+ont été détruits avec l'ancien Pod.
+
+Avant terminaison, il faut donc prévoir le bootstrap du remplaçant :
+
+1. vérifier que `/workspace/start-all` et `/workspace/ai-phone-stack` existent
+   bien sur le volume réseau ;
+2. disposer de nouveaux tokens GitHub et Tailscale valides dans un gestionnaire
+   local, jamais sur le volume FUSE ;
+3. conserver séparément la clé stable `webui_secret_key` si les données chiffrées
+   Open WebUI doivent rester lisibles, et choisir un mot de passe code-server
+   connu ;
+4. après création, ouvrir le terminal RunPod, réinjecter les secrets avec les
+   scripts à saisie masquée, puis lancer `/workspace/start-all` en arrière-plan.
+
+La capacité RTX 4090/3090 en `EU-RO-1` et la RAM de la machine ne sont pas
+garanties par ce fichier. Elles doivent être contrôlées au moment du create ; le
+CLI ne propose pas de contrainte minimale de 64 Go de RAM.
 
 `store-runpod-key.sh` écrit atomiquement la nouvelle clé avec le mode `0600`
 dans

@@ -86,6 +86,9 @@ def main() -> int:
             "function_calling": "native",
             "temperature": 0.7,
             "top_p": 0.9,
+            # Runtime context and compaction are resolved by the shell scripts.
+            # This cap reserves room for tool results and subsequent turns.
+            "max_tokens": 4096,
         }
         meta = {
             "description": (

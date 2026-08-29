@@ -11,9 +11,39 @@ PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/ai-phone-openwebui-pycache" \
   python3 -m py_compile "${OPENWEBUI_DIR}/configure-model.py"
 
 grep -Fq 'export ENABLE_PERSISTENT_CONFIG=false' "${OPENWEBUI_DIR}/run.sh"
+grep -Fq 'OPENWEBUI_REQUIRED_VERSION=0.11.1' "${OPENWEBUI_DIR}/run.sh"
 grep -Fq 'export ENABLE_OPENAI_API_PASSTHROUGH=false' "${OPENWEBUI_DIR}/run.sh"
 grep -Fq 'OPENAI_API_BASE_URLS=http://127.0.0.1:8000/v1' \
   "${OPENWEBUI_DIR}/run.sh"
+grep -Fq 'LLAMA_CONTEXT_SIZE_EFFECTIVE="$(bash "${STACK_ROOT}/llm/context-size.sh")"' \
+  "${OPENWEBUI_DIR}/run.sh"
+grep -Fq 'CONTEXT_COMPACTION_RESERVE=$((LLAMA_CONTEXT_SIZE_EFFECTIVE / 4))' \
+  "${OPENWEBUI_DIR}/run.sh"
+grep -Fq 'CONTEXT_COMPACTION_RESERVE < 12288' "${OPENWEBUI_DIR}/run.sh"
+grep -Fq 'CONTEXT_COMPACTION_THRESHOLD=$((LLAMA_CONTEXT_SIZE_EFFECTIVE - CONTEXT_COMPACTION_RESERVE))' \
+  "${OPENWEBUI_DIR}/run.sh"
+grep -Fq 'export ENABLE_CONTEXT_COMPACTION=true' "${OPENWEBUI_DIR}/run.sh"
+grep -Fq 'export CONTEXT_COMPACTION_MODEL=qwen3.8-uncensored' \
+  "${OPENWEBUI_DIR}/run.sh"
+grep -Fq 'export RAG_FULL_CONTEXT=false' "${OPENWEBUI_DIR}/run.sh"
+grep -Fq 'export BYPASS_EMBEDDING_AND_RETRIEVAL=false' "${OPENWEBUI_DIR}/run.sh"
+grep -Fq 'export RAG_TOP_K=3' "${OPENWEBUI_DIR}/run.sh"
+grep -Fq 'export CHUNK_SIZE=1000' "${OPENWEBUI_DIR}/run.sh"
+grep -Fq 'export WEB_FETCH_MAX_CONTENT_LENGTH=6000' "${OPENWEBUI_DIR}/run.sh"
+grep -Fq '"max_tokens": 4096' "${OPENWEBUI_DIR}/configure-model.py"
+
+context_threshold() {
+  local context_size="$1"
+  local reserve=$((context_size / 4))
+  (( reserve >= 12288 )) || reserve=12288
+  printf '%s\n' "$((context_size - reserve))"
+}
+[[ "$(context_threshold 32768)" == "20480" ]]
+[[ "$(context_threshold 49152)" == "36864" ]]
+[[ "$(context_threshold 65536)" == "49152" ]]
+(( $(context_threshold 32768) + 4096 < 32768 ))
+(( $(context_threshold 49152) + 4096 < 49152 ))
+(( $(context_threshold 65536) + 4096 < 65536 ))
 grep -Fq '"auth_type": "bearer"' "${OPENWEBUI_DIR}/run.sh"
 grep -Fq 'serve --host 127.0.0.1' "${OPENWEBUI_DIR}/run.sh"
 grep -Fq 'SECRET_DIR="${AI_PHONE_SECRET_DIR:-/run/secrets/ai-phone-stack}"' \

@@ -16,6 +16,7 @@ grep -Fq -- '--disable-proxy' "${STACK_ROOT}/scripts/start-code-server.sh"
 grep -Fq 'exec env -i' "${STACK_ROOT}/scripts/start-code-server.sh"
 grep -Fq 'extensions.autoUpdate": false' "${TEST_DIR}/settings.json"
 grep -Fq 'http://127.0.0.1:8000/v1' "${TEST_DIR}/CLINE_SETUP.md"
+grep -Fq 'llm/context-size.sh' "${TEST_DIR}/CLINE_SETUP.md"
 
 if grep -Eq '^export PASSWORD=' "${STACK_ROOT}/scripts/start-code-server.sh"; then
   printf 'start-code-server.sh must not export PASSWORD to extension hosts\n' >&2

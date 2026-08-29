@@ -26,8 +26,9 @@ RUNPODCTL_BIN="${RUNPODCTL_BIN:-runpodctl}"
 RUNPOD_STORAGE_MODE="${RUNPOD_STORAGE_MODE:-network-volume}"
 DRY_RUN=0
 PREVIEW_REDEPLOY=0
+USE_FALLBACK_GPU=0
 usage() {
-  printf 'Usage: %s [--dry-run | --preview-redeploy]\n' "$0"
+  printf 'Usage: %s [--dry-run | --preview-redeploy] [--use-fallback-gpu]\n' "$0"
 }
 while (( $# > 0 )); do
   case "$1" in
@@ -38,6 +39,10 @@ while (( $# > 0 )); do
     --preview-redeploy)
       PREVIEW_REDEPLOY=1
       DRY_RUN=1
+      shift
+      ;;
+    --use-fallback-gpu)
+      USE_FALLBACK_GPU=1
       shift
       ;;
     -h|--help)
@@ -113,9 +118,15 @@ fi
 
 require_configured_value RUNPOD_TEMPLATE_ID
 require_value RUNPOD_GPU_ID
+selected_gpu_id="${RUNPOD_GPU_ID}"
+if [[ "${USE_FALLBACK_GPU}" == "1" ]]; then
+  require_configured_value RUNPOD_GPU_FALLBACK_ID
+  selected_gpu_id="${RUNPOD_GPU_FALLBACK_ID}"
+  log "Explicit fallback GPU selected: ${selected_gpu_id}"
+fi
 create_args=(pod create
   --template-id "${RUNPOD_TEMPLATE_ID}"
-  --gpu-id "${RUNPOD_GPU_ID}"
+  --gpu-id "${selected_gpu_id}"
   --gpu-count 1
   --name "${RUNPOD_POD_NAME:-ai-phone-stack}"
   --ssh
@@ -126,6 +137,9 @@ if [[ -n "${RUNPOD_PORTS:-}" ]]; then
 fi
 if [[ -n "${RUNPOD_DATA_CENTER_IDS:-}" ]]; then
   create_args+=(--data-center-ids "${RUNPOD_DATA_CENTER_IDS}")
+fi
+if [[ -n "${RUNPOD_DOCKER_ARGS:-}" ]]; then
+  create_args+=(--docker-args "${RUNPOD_DOCKER_ARGS}")
 fi
 
 if [[ "${RUNPOD_STORAGE_MODE}" == "network-volume" ]]; then
@@ -151,7 +165,28 @@ log "Creating a ${RUNPOD_STORAGE_MODE} Pod"
 output_file="$(mktemp)"
 cleanup() { rm -f -- "${output_file}"; }
 trap cleanup EXIT
-"${RUNPODCTL_BIN}" "${create_args[@]}" | tee "${output_file}"
+if ! "${RUNPODCTL_BIN}" "${create_args[@]}" | tee "${output_file}"; then
+  possible_pod_id="$(python3 - "${output_file}" <<'PY' 2>/dev/null || true
+import json, pathlib, sys
+payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+if isinstance(payload, list) and len(payload) == 1:
+    payload = payload[0]
+if isinstance(payload, dict):
+    value = payload.get("id") or payload.get("podId")
+    if isinstance(value, str) and value:
+        print(value)
+PY
+)"
+  if [[ -n "${possible_pod_id}" ]]; then
+    printf '%s\n' "${possible_pod_id}" > "${POD_ID_FILE}"
+    printf '%s\n' "${RUNPOD_STORAGE_MODE}" > "${STORAGE_MODE_FILE}"
+    die "create returned an error but reported Pod ${possible_pod_id}; state was saved, so inspect it before any retry"
+  fi
+  if [[ "${USE_FALLBACK_GPU}" != "1" && -n "${RUNPOD_GPU_FALLBACK_ID:-}" ]]; then
+    die "primary create failed without a reported Pod id. First run 'runpodctl pod list --all' and verify no Pod was created; only then retry with --use-fallback-gpu"
+  fi
+  die "Pod creation failed without a reported Pod id; inspect 'runpodctl pod list --all' before retrying"
+fi
 new_pod_id="$(python3 - "${output_file}" <<'PY'
 import json, sys
 data = json.load(open(sys.argv[1], encoding="utf-8"))
