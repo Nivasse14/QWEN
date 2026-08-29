@@ -48,7 +48,7 @@ cp local/env.example .env.local
 Le client `runpodctl pod create` accepte un seul `--gpu-id`. Le fallback est
 donc volontairement **explicite**, jamais automatique : la première tentative
 utilise la RTX 4090. Si elle échoue sans retourner d'ID, vérifier d'abord qu'elle
-n'a créé aucun Pod, puis seulement essayer la RTX 3090 :
+n'a créé aucun Pod, puis seulement essayer la RTX PRO 4500 Blackwell 32 Go :
 
 ```bash
 runpodctl pod list --all
@@ -81,9 +81,12 @@ Avant terminaison, il faut donc prévoir le bootstrap du remplaçant :
 4. après création, ouvrir le terminal RunPod, réinjecter les secrets avec les
    scripts à saisie masquée, puis lancer `/workspace/start-all` en arrière-plan.
 
-La capacité RTX 4090/3090 en `EU-RO-1` et la RAM de la machine ne sont pas
-garanties par ce fichier. Elles doivent être contrôlées au moment du create ; le
-CLI ne propose pas de contrainte minimale de 64 Go de RAM.
+Le 29 août 2026, RunPod annonçait en `EU-RO-1` la RTX 4090 Secure à 0,74 $/h
+(stock moyen) et la RTX PRO 4500 Blackwell 32 Go à 0,72 $/h (stock élevé). La
+RTX 3090 n'était disponible qu'en `EU-CZ-1` et ne pouvait donc pas réutiliser le
+volume réseau `EU-RO-1`. La capacité et la RAM de la machine doivent être
+recontrôlées au moment du create ; le CLI ne propose pas de contrainte minimale
+de 64 Go de RAM.
 
 `store-runpod-key.sh` écrit atomiquement la nouvelle clé avec le mode `0600`
 dans

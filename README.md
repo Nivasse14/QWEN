@@ -164,16 +164,18 @@ coupe les services mais pas la facturation GPU. Avec le volume réseau
 explicitement confirmée, puis un redéploiement ultérieur sur le même volume.
 
 Le redéploiement utilise le template officiel `runpod-torch-v280`. Le CLI ne
-permettant qu'un GPU par create, la RTX 3090 est un fallback manuel et sûr : si
-la tentative RTX 4090 échoue, contrôler `runpodctl pod list --all` avant
+permettant qu'un GPU par create, la RTX PRO 4500 Blackwell 32 Go est un fallback
+manuel et compatible avec le volume `EU-RO-1` : si la tentative RTX 4090 échoue,
+contrôler `runpodctl pod list --all` avant
 `./local/start-pod.sh --use-fallback-gpu`. Aucun retry automatique ne risque
-ainsi de créer deux Pods facturés.
+ainsi de créer deux Pods facturés. La RTX 3090 disponible en `EU-CZ-1` ne peut
+pas rattacher ce volume réseau régional.
 
 Laisser `RUNPOD_DOCKER_ARGS` vide au premier boot conserve Jupyter/SSH. Les
 secrets privés et l'identité Tailscale disparaissent avec le Pod ; lancer
 immédiatement `/workspace/start-all` comme Docker CMD échouerait avant leur
-réinjection. La disponibilité 4090/3090 en `EU-RO-1` et les 64 Go de RAM restent
-des contrôles à effectuer au moment du redéploiement.
+réinjection. La disponibilité 4090/RTX PRO 4500 en `EU-RO-1` et les 64 Go de RAM
+restent des contrôles à effectuer au moment du redéploiement.
 
 Le terminate/redeploy conserve le dépôt, les modèles, les données Open WebUI et
 les journaux situés sur le volume. Il perd le disque conteneur, `/run`, les
@@ -195,7 +197,7 @@ stockage, hors disque conteneur, taxes et variation d'offre. Les tarifs doivent
 |---|---:|---:|---:|---:|
 | **Pod actuel Secure, RTX 5090** | **0,99 $/h** | **21 $/mois** | **743,70 $** | **199,20 $** |
 | Secure + volume réseau, RTX 4090 | 0,74 $/h | 21 $/mois | 561,20 $ | 154,20 $ |
-| Secure + volume réseau, RTX 3090 | 0,50 $/h | 21 $/mois | 386,00 $ | 111,00 $ |
+| Secure + volume réseau, RTX PRO 4500 32 Go | 0,72 $/h | 21 $/mois | 546,60 $ | 150,60 $ |
 | Community + Pod volume, RTX 4090 | 0,34 $/h | 30 $ actif / 52,50 $ mixte | 278,20 $ | 113,70 $ |
 | Community + Pod volume, RTX 3090 | 0,22 $/h | 30 $ actif / 52,50 $ mixte | 190,60 $ | 92,10 $ |
 
@@ -205,9 +207,10 @@ l'estimation mixte 6 h/jour applique 0,10 $/Go/mois pendant 25 % du temps et
 
 En conséquence, l'objectif de 150 $/mois n'est pas compatible avec une carte
 24 Go active 24/7. Même à 6 h/jour, 300 Go de stockage rendent l'objectif
-40–60 $ irréaliste dans ces scénarios. Le fallback RTX 3090 réduit le coût,
-mais un plafond réellement contraignant nécessite moins d'heures, moins de
-stockage ou une offre moins chère disponible au moment de la création.
+40–60 $ irréaliste dans ces scénarios. Le fallback RTX PRO 4500 améliore la
+disponibilité et conserve 32 Go de VRAM, mais réduit peu le coût. Un plafond
+réellement contraignant nécessite moins d'heures, moins de stockage ou une offre
+moins chère disponible au moment de la création.
 
 ## Diagnostic
 
