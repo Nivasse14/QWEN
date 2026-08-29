@@ -22,8 +22,11 @@ construite :
 
 ```bash
 cp local/env.example .env.local
-# Remplir uniquement les identifiants non secrets. Authentifier runpodctl
-# localement, hors du Pod et hors du dépôt.
+# Remplir uniquement les identifiants non secrets.
+
+# Saisir une NOUVELLE clé RunPod sans écho, sur le poste local uniquement :
+./local/store-runpod-key.sh
+
 ./local/start-pod.sh --preview-redeploy
 
 # L'arrêt simple est volontairement refusé :
@@ -40,9 +43,21 @@ cp local/env.example .env.local
 ./local/start-pod.sh
 ```
 
+`store-runpod-key.sh` écrit atomiquement la nouvelle clé avec le mode `0600`
+dans
+`${XDG_CONFIG_HOME:-$HOME/.config}/ai-phone-stack/runpod_api_key`. Le répertoire
+est en `0700`. Le script refuse un chemin sous `/workspace`, un lien symbolique
+ou des permissions trop ouvertes, et n'affiche jamais la valeur.
+
+`start-pod.sh` et `stop-pod.sh` exportent `RUNPOD_API_KEY` depuis ce fichier
+uniquement si la variable n'existe pas déjà dans l'environnement. Ils ne
+l'affichent pas et ne la transmettent pas sur la ligne de commande. Rejouer
+`store-runpod-key.sh` remplace la clé locale de façon atomique ; l'ancienne clé
+doit ensuite être révoquée côté RunPod selon la politique du compte.
+
 `start-pod.sh` mémorise seulement l'identifiant du Pod et le mode de stockage
 dans `.local-state/`. Il n'enregistre aucune clé. `runpodctl` doit être déjà
-authentifié localement. Un Pod réseau existant mais non actif n'est jamais
+authentifié via l'environnement local chargé ci-dessus. Un Pod réseau existant mais non actif n'est jamais
 supprimé automatiquement : il faut confirmer avec `--terminate-redeploy`.
 Après création du remplaçant, l'ID mémorisé dans `.local-state/` prévaut sur
 l'ancien `RUNPOD_POD_ID` de `.env.local`.

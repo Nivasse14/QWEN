@@ -125,8 +125,17 @@ Community Cloud. Les scripts locaux suivent donc un cycle prudent :
 ```
 
 Ces commandes `local/` s'exécutent exclusivement sur un poste de confiance où
-`runpodctl` est déjà authentifié, jamais dans le Pod. Elles ne lisent ni
-n'enregistrent de clé RunPod dans ce dépôt. L'arrêt interne `stop-stack.sh`
+la nouvelle clé RunPod a été enregistrée, jamais dans le Pod :
+
+```bash
+./local/store-runpod-key.sh
+```
+
+La saisie est masquée et le fichier privé est
+`${XDG_CONFIG_HOME:-$HOME/.config}/ai-phone-stack/runpod_api_key`, avec le mode
+`0600`. `start-pod.sh` et `stop-pod.sh` le chargent dans `RUNPOD_API_KEY`
+uniquement si cette variable est absente, sans imprimer la valeur. Elles
+n'enregistrent aucune clé dans ce dépôt. L'arrêt interne `stop-stack.sh`
 coupe les services mais pas la facturation GPU. Avec le volume réseau
 `n10j3zet9z`, l'extinction facturable du Pod `ew6jja07rnn0cg` est une suppression
 explicitement confirmée, puis un redéploiement ultérieur sur le même volume.

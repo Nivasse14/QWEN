@@ -18,6 +18,10 @@ if [[ -r "${ENV_FILE}" ]]; then
   source "${ENV_FILE}"
 fi
 
+# shellcheck source=runpod-key-common.sh
+source "${SCRIPT_DIR}/runpod-key-common.sh"
+load_runpod_api_key
+
 RUNPODCTL_BIN="${RUNPODCTL_BIN:-runpodctl}"
 TERMINATE_REDEPLOY=0
 DRY_RUN=0
