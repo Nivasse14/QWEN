@@ -1,0 +1,25 @@
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "AI Phone Search"
+  enable_metrics: false
+
+search:
+  safe_search: 0
+  autocomplete: "duckduckgo"
+  formats:
+    - html
+    - json
+
+server:
+  # Replaced at runtime by the mandatory SEARXNG_SECRET environment variable.
+  secret_key: "replace-with-SEARXNG_SECRET-at-runtime"
+  bind_address: "127.0.0.1"
+  port: 8889
+  limiter: false
+  image_proxy: true
+
+outgoing:
+  request_timeout: 5.0
+  max_request_timeout: 15.0

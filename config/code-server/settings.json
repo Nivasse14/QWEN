@@ -1,0 +1,15 @@
+{
+  "telemetry.telemetryLevel": "off",
+  "workbench.enableExperiments": false,
+  "extensions.autoCheckUpdates": false,
+  "extensions.autoUpdate": false,
+  "update.mode": "none",
+  "remote.autoForwardPorts": false,
+  "terminal.integrated.enablePersistentSessions": false,
+  "terminal.integrated.shellIntegration.enabled": true,
+  "security.workspace.trust.untrustedFiles": "newWindow",
+  "git.autofetch": false,
+  "cline.enableCheckpoints": true,
+  "cline.disableBrowserTool": true
+}
+

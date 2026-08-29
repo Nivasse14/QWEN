@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.local-state/
+.runtime/
+run/
+state/
+vendor/
+*.log
+

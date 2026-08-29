@@ -1,0 +1,116 @@
+# REFERENCE ONLY: do not run this file inside a RunPod Pod. RunPod Pods do not
+# provide a Docker daemon / supported Docker-in-Docker environment. Every
+# service is behind the explicit `portable-host` profile to prevent accidental
+# startup with a plain `docker compose up`.
+
+x-runpod-pod-compatibility:
+  executable-inside-runpod-pod: false
+  reason: "Use the native-process scripts in scripts/ from a custom RunPod template image."
+
+services:
+  vllm:
+    profiles: ["portable-host"]
+    image: vllm/vllm-openai:latest
+    command:
+      - --model
+      - /models/${VLLM_MODEL_FILE:-model.gguf}
+      - --served-model-name
+      - qwen3.8-uncensored
+      - --max-model-len
+      - "${VLLM_MAX_MODEL_LEN:-8192}"
+      - --gpu-memory-utilization
+      - "${VLLM_GPU_MEMORY_UTILIZATION:-0.82}"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ${STACK_DATA_ROOT:-./portable-data}/models:/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  comfyui:
+    profiles: ["portable-host"]
+    image: ${COMFYUI_IMAGE:-runcomfy/comfyui:latest}
+    ports:
+      - "127.0.0.1:8188:8188"
+    volumes:
+      - ${STACK_DATA_ROOT:-./portable-data}/comfyui:/workspace
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  searxng:
+    profiles: ["portable-host"]
+    image: searxng/searxng:latest
+    environment:
+      SEARXNG_BASE_URL: http://127.0.0.1:8888/
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-set-at-runtime}
+    ports:
+      - "127.0.0.1:8888:8080"
+    volumes:
+      - ./config/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    restart: unless-stopped
+
+  open-webui:
+    profiles: ["portable-host"]
+    image: ghcr.io/open-webui/open-webui:main
+    depends_on:
+      - vllm
+      - searxng
+    environment:
+      OPENAI_API_BASE_URLS: http://vllm:8000/v1
+      OPENAI_API_KEYS: ${OPENAI_LOCAL_KEY:-local-vllm}
+      ENABLE_RAG_WEB_SEARCH: "true"
+      RAG_WEB_SEARCH_ENGINE: searxng
+      SEARXNG_QUERY_URL: http://searxng:8080/search?q=<query>
+    ports:
+      - "127.0.0.1:3000:8080"
+    volumes:
+      - ${STACK_DATA_ROOT:-./portable-data}/open-webui:/app/backend/data
+    restart: unless-stopped
+
+  code-server:
+    profiles: ["portable-host"]
+    image: codercom/code-server:latest
+    environment:
+      PASSWORD: ${CODE_SERVER_PASSWORD:-set-at-runtime}
+    command:
+      - --auth
+      - password
+      - --bind-addr
+      - 0.0.0.0:8080
+      - /workspace
+    ports:
+      - "127.0.0.1:8443:8080"
+    volumes:
+      - ${STACK_DATA_ROOT:-./portable-data}:/workspace
+      - ${STACK_DATA_ROOT:-./portable-data}/code-server:/home/coder/.local/share/code-server
+    restart: unless-stopped
+
+  tailscale:
+    profiles: ["portable-host"]
+    image: tailscale/tailscale:stable
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      TS_AUTHKEY: ${TAILSCALE_AUTH_KEY:-}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_HOSTNAME: ${TAILSCALE_HOSTNAME:-ai-phone-stack}
+    volumes:
+      - ${STACK_DATA_ROOT:-./portable-data}/tailscale:/var/lib/tailscale
+    restart: unless-stopped
+
