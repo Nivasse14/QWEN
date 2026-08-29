@@ -19,6 +19,19 @@ grep -Fq 'serve --host 127.0.0.1' "${OPENWEBUI_DIR}/run.sh"
 grep -Fq 'SECRET_DIR="${AI_PHONE_SECRET_DIR:-/run/secrets/ai-phone-stack}"' \
   "${OPENWEBUI_DIR}/common.sh"
 
+SYSTEM_PROMPT="${OPENWEBUI_DIR}/system-prompt.txt"
+grep -Fq -- '- execute_code :' "$SYSTEM_PROMPT"
+grep -Fq -- '- github_* :' "$SYSTEM_PROMPT"
+grep -Fq -- '- server_shell :' "$SYSTEM_PROMPT"
+grep -Fq -- '- generate_image :' "$SYSTEM_PROMPT"
+grep -Fq -- '- flux_image :' "$SYSTEM_PROMPT"
+grep -Fq 'utilise generate_image et non' "$SYSTEM_PROMPT"
+
+if grep -Eq 'ai_phone_(github|server_shell|flux_image)' "$SYSTEM_PROMPT"; then
+  printf 'Obsolete OpenAPI tool names found in system prompt\n' >&2
+  exit 1
+fi
+
 if grep -Eq '(github_pat_|ghp_|rpa_[[:alnum:]]|hf_[[:alnum:]]|tskey-)' \
   "${OPENWEBUI_DIR}/common.sh" \
   "${OPENWEBUI_DIR}/run.sh" \
