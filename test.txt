@@ -1,2 +1,2 @@
-Qwen AI Phone Stack — test GitHub réussi.
-Push authentifié via l’outil OpenAPI.
+Qwen GitHub tool validation
+Authenticated write and push through AI Phone Stack.
