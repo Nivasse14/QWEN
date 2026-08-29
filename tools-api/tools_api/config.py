@@ -75,6 +75,7 @@ class Settings:
     max_flux_response_bytes: int = 32 * 1024 * 1024
     git_author_name: str = "Open WebUI Agent"
     git_author_email: str = "open-webui-agent@localhost"
+    git_config_global: Path = Path("/root/.gitconfig")
     command_path: str = "/usr/local/bin:/usr/bin:/bin"
 
     @classmethod
@@ -110,6 +111,9 @@ class Settings:
             git_author_email=os.getenv(
                 "GIT_AUTHOR_EMAIL", "open-webui-agent@localhost"
             ),
+            git_config_global=Path(
+                os.getenv("GIT_CONFIG_GLOBAL", "/root/.gitconfig")
+            ),
             command_path=os.getenv(
                 "TOOLS_COMMAND_PATH", "/usr/local/bin:/usr/bin:/bin"
             ),
@@ -128,4 +132,3 @@ class Settings:
             )
             if value
         )
-

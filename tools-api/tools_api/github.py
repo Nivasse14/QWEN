@@ -34,7 +34,10 @@ class GitHubService:
     def _github_env(self) -> dict[str, str]:
         if not self.settings.github_token:
             raise ConfigurationError("GitHub authentication is not configured")
-        return {"GH_TOKEN": self.settings.github_token}
+        return {
+            "GH_TOKEN": self.settings.github_token,
+            "GIT_CONFIG_GLOBAL": str(self.settings.git_config_global),
+        }
 
     @staticmethod
     def _decode_json(output: str) -> Any:

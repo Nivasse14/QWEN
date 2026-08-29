@@ -142,7 +142,12 @@ def test_commit_stages_exact_paths_and_pushes_without_force(
     git_calls = [call for call in runner.calls if call["args"][0] == "git"]
     assert git_calls
     assert all(
-        call["env"] == {"GH_TOKEN": "dummy-github-token"} for call in git_calls
+        call["env"]
+        == {
+            "GH_TOKEN": "dummy-github-token",
+            "GIT_CONFIG_GLOBAL": "/root/.gitconfig",
+        }
+        for call in git_calls
     )
     assert all("dummy-github-token" not in call["args"] for call in git_calls)
 
@@ -167,7 +172,10 @@ def test_status_passes_gh_token_only_via_environment(
         "--branch",
         "--untracked-files=normal",
     ]
-    assert call["env"] == {"GH_TOKEN": "dummy-github-token"}
+    assert call["env"] == {
+        "GH_TOKEN": "dummy-github-token",
+        "GIT_CONFIG_GLOBAL": "/root/.gitconfig",
+    }
     assert "dummy-github-token" not in call["args"]
 
 
